@@ -1,0 +1,1690 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI流量守卫者 - 智能白流量过滤平台</title>
+  <!-- 外部资源引入 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  
+  <!-- Tailwind 配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            secondary: '#0FC6C2',
+            success: '#00B42A',
+            warning: '#FF7D00',
+            danger: '#F53F3F',
+            dark: '#1D2129',
+            'dark-2': '#4E5969',
+            'light-1': '#F2F3F5',
+            'light-2': '#E5E6EB',
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <!-- 自定义样式 -->
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .sidebar-item {
+        @apply flex items-center gap-3 px-4 py-3 text-dark-2 hover:bg-primary/10 hover:text-primary rounded-lg transition-all duration-200;
+      }
+      .sidebar-item.active {
+        @apply bg-primary/10 text-primary font-medium border-l-4 border-primary;
+      }
+      .card {
+        @apply bg-white rounded-xl shadow-sm p-5 transition-all duration-300 hover:shadow-md;
+      }
+      .btn {
+        @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2;
+      }
+      .btn-primary {
+        @apply bg-primary text-white hover:bg-primary/90 active:bg-primary/80;
+      }
+      .btn-outline {
+        @apply border border-primary text-primary hover:bg-primary/5 active:bg-primary/10;
+      }
+      .form-input {
+        @apply w-full px-4 py-2 border border-light-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all;
+      }
+      .badge {
+        @apply px-2 py-1 rounded-full text-xs font-medium;
+      }
+      .toast {
+        @apply fixed top-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 transform translate-x-full opacity-0;
+      }
+      .toast.show {
+        @apply translate-x-0 opacity-100;
+      }
+    }
+  </style>
+</head>
+<body class="font-inter bg-gray-50 text-dark overflow-x-hidden">
+  <!-- 提示消息组件 -->
+  <div id="toast" class="toast bg-success text-white">
+    <i class="fa fa-check mr-2"></i> <span id="toast-message">操作成功</span>
+  </div>
+
+  <!-- 登录页面 -->
+  <div id="login-page" class="fixed inset-0 z-40 flex items-center justify-center bg-gray-100 p-4">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-lg overflow-hidden transform transition-all duration-300">
+      <div class="p-6 sm:p-8">
+        <div class="text-center mb-8">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+            <i class="fa fa-shield text-2xl text-primary"></i>
+          </div>
+          <h2 class="text-2xl font-bold text-dark">AI流量守卫者</h2>
+          <p class="text-dark-2 mt-2">智能白流量过滤平台</p>
+        </div>
+        
+        <form id="login-form">
+          <div class="mb-4">
+            <label for="username" class="block text-sm font-medium text-dark-2 mb-1">用户名</label>
+            <input type="text" id="username" class="form-input" placeholder="请输入用户名" required>
+          </div>
+          
+          <div class="mb-6">
+            <label for="password" class="block text-sm font-medium text-dark-2 mb-1">密码</label>
+            <input type="password" id="password" class="form-input" placeholder="请输入密码" required>
+            <p id="login-error" class="text-danger text-sm mt-1 hidden">用户名或密码错误</p>
+          </div>
+          
+          <button type="submit" class="btn btn-primary w-full justify-center">
+            <i class="fa fa-sign-in"></i> 登录
+          </button>
+          
+          <div class="mt-4 text-center">
+            <button type="button" id="show-register" class="text-primary text-sm hover:underline">
+              还没有账号？立即注册
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 注册页面 -->
+  <div id="register-page" class="fixed inset-0 z-40 flex items-center justify-center bg-gray-100 p-4 hidden">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-lg overflow-hidden transform transition-all duration-300">
+      <div class="p-6 sm:p-8">
+        <div class="text-center mb-8">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+            <i class="fa fa-user-plus text-2xl text-primary"></i>
+          </div>
+          <h2 class="text-2xl font-bold text-dark">账号注册</h2>
+          <p class="text-dark-2 mt-2">创建账号以使用AI流量守卫者</p>
+        </div>
+        
+        <form id="register-form">
+          <div class="mb-4">
+            <label for="reg-username" class="block text-sm font-medium text-dark-2 mb-1">用户名</label>
+            <input type="text" id="reg-username" class="form-input" placeholder="请设置用户名" required>
+            <p id="user-exist-error" class="text-danger text-sm mt-1 hidden">用户名已存在</p>
+          </div>
+          
+          <div class="mb-4">
+            <label for="reg-password" class="block text-sm font-medium text-dark-2 mb-1">密码</label>
+            <input type="password" id="reg-password" class="form-input" placeholder="请设置密码（至少6位）" required>
+            <p id="password-length-error" class="text-danger text-sm mt-1 hidden">密码长度不能少于6位</p>
+          </div>
+          
+          <div class="mb-6">
+            <label for="reg-confirm" class="block text-sm font-medium text-dark-2 mb-1">确认密码</label>
+            <input type="password" id="reg-confirm" class="form-input" placeholder="请再次输入密码" required>
+            <p id="password-error" class="text-danger text-sm mt-1 hidden">两次密码不一致</p>
+          </div>
+          
+          <button type="submit" class="btn btn-primary w-full justify-center">
+            <i class="fa fa-user-plus"></i> 注册
+          </button>
+          
+          <div class="mt-4 text-center">
+            <button type="button" id="show-login" class="text-primary text-sm hover:underline">
+              已有账号？立即登录
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 主应用界面 -->
+  <div id="app" class="hidden">
+    <!-- 顶部导航栏 -->
+    <header class="fixed top-0 left-0 right-0 bg-white shadow-sm z-30">
+      <div class="flex items-center justify-between px-6 h-16">
+        <div class="flex items-center gap-2">
+          <button id="sidebar-toggle" class="lg:hidden p-2 rounded-lg hover:bg-light-1 transition-colors">
+            <i class="fa fa-bars text-dark-2"></i>
+          </button>
+          <div class="flex items-center gap-2">
+            <i class="fa fa-shield text-xl text-primary"></i>
+            <h1 class="text-lg font-bold hidden sm:block">AI流量守卫者</h1>
+          </div>
+        </div>
+        
+        <div class="flex items-center gap-4">
+          <!-- 通知图标 -->
+          <div class="relative">
+            <button class="p-2 rounded-full hover:bg-light-1 relative transition-colors">
+              <i class="fa fa-bell text-dark-2"></i>
+              <span class="absolute top-1 right-1 w-2 h-2 bg-danger rounded-full"></span>
+            </button>
+          </div>
+          
+          <!-- 用户信息 -->
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+              <i class="fa fa-user"></i>
+            </div>
+            <span class="text-sm font-medium hidden sm:block" id="current-user">用户</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 侧边栏 -->
+    <aside id="sidebar" class="fixed top-16 left-0 bottom-0 w-64 bg-white shadow-sm z-20 transform -translate-x-full lg:translate-x-0 transition-transform duration-300">
+      <div class="p-4">
+        <div class="relative">
+          <input type="text" placeholder="搜索功能..." class="form-input pl-10">
+          <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-dark-2"></i>
+        </div>
+      </div>
+      
+      <nav class="mt-4 px-2">
+        <p class="text-xs font-medium text-dark-2 uppercase px-4 mb-2">主要功能</p>
+        <ul class="space-y-1">
+          <li>
+  <a href="#file-drop-filter" class="sidebar-item" data-page="file-drop-filter">
+    <i class="fa fa-upload w-5 text-center"></i>
+    <span>文件拖放过滤</span>
+  </a>
+</li>
+          <li>
+            <a href="#dashboard" class="sidebar-item active" data-page="dashboard">
+              <i class="fa fa-tachometer w-5 text-center"></i>
+              <span>仪表盘</span>
+            </a>
+          </li>
+          <li>
+            <a href="#traffic-monitor" class="sidebar-item" data-page="traffic-monitor">
+              <i class="fa fa-exchange w-5 text-center"></i>
+              <span>流量监控</span>
+            </a>
+          </li>
+          <li>
+            <a href="#white-rules" class="sidebar-item" data-page="white-rules">
+              <i class="fa fa-filter w-5 text-center"></i>
+              <span>白流量规则</span>
+            </a>
+          </li>
+          <li>
+            <a href="#alerts" class="sidebar-item" data-page="alerts">
+              <i class="fa fa-bell w-5 text-center"></i>
+              <span>告警中心</span>
+            </a>
+          </li>
+        </ul>
+        
+        <p class="text-xs font-medium text-dark-2 uppercase px-4 mb-2 mt-6">系统设置</p>
+        <ul class="space-y-1">
+          <li>
+            <a href="#settings" class="sidebar-item" data-page="settings">
+              <i class="fa fa-cog w-5 text-center"></i>
+              <span>系统设置</span>
+            </a>
+          </li>
+          <li>
+            <a href="#profile" class="sidebar-item" data-page="profile">
+              <i class="fa fa-user w-5 text-center"></i>
+              <span>个人中心</span>
+            </a>
+          </li>
+          <li>
+            <a href="#help" class="sidebar-item" data-page="help">
+              <i class="fa fa-question-circle w-5 text-center"></i>
+              <span>帮助中心</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+      
+      <div class="absolute bottom-4 left-0 right-0 px-4">
+        <button id="logout-btn" class="w-full btn btn-outline justify-center">
+          <i class="fa fa-sign-out"></i> 退出登录
+        </button>
+      </div>
+    </aside>
+
+    <!-- 主内容区 -->
+    <main class="pt-16 lg:pl-64 min-h-screen pb-20">
+      <div class="p-6">
+        <!-- 文件拖放过滤页面 -->
+<div id="file-drop-filter-page" class="page-content hidden">
+  <div class="flex items-center justify-between mb-6">
+    <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold">文件拖放过滤</h2>
+    <div class="flex gap-2">
+      <button id="clear-files-btn" class="btn btn-outline">
+        <i class="fa fa-trash"></i> 清空文件
+      </button>
+      <button id="apply-file-filter-btn" class="btn btn-primary">
+        <i class="fa fa-filter"></i> 应用过滤
+      </button>
+    </div>
+  </div>
+  
+  <!-- 拖放区域 -->
+  <div id="file-drop-area" class="border-2 border-dashed border-light-2 rounded-xl p-10 text-center mb-6 transition-all duration-300 hover:border-primary/50">
+    <div class="max-w-md mx-auto">
+      <div class="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="fa fa-cloud-upload text-2xl text-primary"></i>
+      </div>
+      <h3 class="text-lg font-medium mb-2">拖放文件到此处</h3>
+      <p class="text-dark-2 mb-4">支持常见文件类型，如文档、图片、视频等</p>
+      <label class="inline-block btn btn-outline">
+        <i class="fa fa-plus"></i> 选择文件
+        <input type="file" id="file-input" multiple class="hidden" />
+      </label>
+      <p class="text-xs text-dark-2 mt-4">支持的格式：.doc, .docx, .pdf, .jpg, .png, .mp4, .mp3, .zip 等</p>
+    </div>
+  </div>
+  
+  <!-- 已选文件列表 -->
+  <div class="card">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold">已选择的文件</h3>
+      <p class="text-sm text-dark-2" id="file-count">0 个文件</p>
+    </div>
+    
+    <div id="file-list" class="divide-y divide-light-2">
+      <!-- 空状态 -->
+      <div id="empty-file-state" class="flex flex-col items-center justify-center py-12 text-dark-2">
+        <i class="fa fa-file-o text-4xl mb-3 opacity-30"></i>
+        <p>尚未添加任何文件，请拖放文件或点击"选择文件"按钮</p>
+      </div>
+      
+      <!-- 文件列表将通过JavaScript动态生成 -->
+    </div>
+  </div>
+</div>
+
+        <!-- 仪表盘页面 -->
+        <div id="dashboard-page" class="page-content">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold">流量监控仪表盘</h2>
+            <div class="flex gap-2">
+              <button class="btn btn-outline">
+                <i class="fa fa-download"></i> 导出报告
+              </button>
+              <button class="btn btn-primary">
+                <i class="fa fa-refresh"></i> 刷新数据
+              </button>
+            </div>
+          </div>
+          
+          <!-- 数据概览卡片（清空数据） -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <div class="card">
+              <div class="flex items-start justify-between">
+                <div>
+                  <p class="text-dark-2 text-sm">总流量</p>
+                  <h3 class="text-2xl font-bold mt-1">0 GB</h3>
+                  <p class="text-dark-2 text-sm mt-2 flex items-center">
+                    <i class="fa fa-minus mr-1"></i> 0% 较昨日
+                  </p>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <i class="fa fa-exchange"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card">
+              <div class="flex items-start justify-between">
+                <div>
+                  <p class="text-dark-2 text-sm">白流量占比</p>
+                  <h3 class="text-2xl font-bold mt-1">0%</h3>
+                  <p class="text-dark-2 text-sm mt-2 flex items-center">
+                    <i class="fa fa-minus mr-1"></i> 0% 较昨日
+                  </p>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center text-success">
+                  <i class="fa fa-check-circle"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card">
+              <div class="flex items-start justify-between">
+                <div>
+                  <p class="text-dark-2 text-sm">可疑流量</p>
+                  <h3 class="text-2xl font-bold mt-1">0</h3>
+                  <p class="text-dark-2 text-sm mt-2 flex items-center">
+                    <i class="fa fa-minus mr-1"></i> 0% 较昨日
+                  </p>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center text-warning">
+                  <i class="fa fa-exclamation-triangle"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card">
+              <div class="flex items-start justify-between">
+                <div>
+                  <p class="text-dark-2 text-sm">误判率</p>
+                  <h3 class="text-2xl font-bold mt-1">0%</h3>
+                  <p class="text-dark-2 text-sm mt-2 flex items-center">
+                    <i class="fa fa-minus mr-1"></i> 0% 较昨日
+                  </p>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
+                  <i class="fa fa-balance-scale"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 图表区域（空图表） -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <div class="card lg:col-span-2">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold">流量趋势分析</h3>
+                <div class="flex gap-2">
+                  <button class="px-3 py-1 text-sm rounded-md bg-primary/10 text-primary">今日</button>
+                  <button class="px-3 py-1 text-sm rounded-md hover:bg-light-1">本周</button>
+                  <button class="px-3 py-1 text-sm rounded-md hover:bg-light-1">本月</button>
+                </div>
+              </div>
+              <div class="h-80">
+                <canvas id="traffic-trend-chart"></canvas>
+              </div>
+            </div>
+            
+            <div class="card">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold">流量类型分布</h3>
+                <button class="text-primary text-sm hover:underline">详情</button>
+              </div>
+              <div class="h-80 flex items-center justify-center">
+                <canvas id="traffic-type-chart"></canvas>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 空列表提示 -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="card">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold">最近告警</h3>
+                <button class="text-primary text-sm hover:underline">查看全部</button>
+              </div>
+              <div class="flex flex-col items-center justify-center py-12 text-dark-2">
+                <i class="fa fa-bell-o text-4xl mb-3 opacity-30"></i>
+                <p>暂无告警记录</p>
+              </div>
+            </div>
+            
+            <div class="card">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold">最近检测流量</h3>
+                <button class="text-primary text-sm hover:underline">查看全部</button>
+              </div>
+              <div class="flex flex-col items-center justify-center py-12 text-dark-2">
+                <i class="fa fa-exchange text-4xl mb-3 opacity-30"></i>
+                <p>暂无流量数据</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 流量监控页面（空状态） -->
+        <div id="traffic-monitor-page" class="page-content hidden">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold">流量实时监控</h2>
+            <div class="flex gap-2">
+              <div class="relative">
+                <select class="form-input pr-8 appearance-none">
+                  <option>全部流量类型</option>
+                  <option>HTTP流量</option>
+                  <option>DNS流量</option>
+                  <option>视频流</option>
+                </select>
+                <i class="fa fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-dark-2 pointer-events-none"></i>
+              </div>
+              <button class="btn btn-primary">
+                <i class="fa fa-filter"></i> 筛选
+              </button>
+            </div>
+          </div>
+          
+          <!-- 实时流量图表（空） -->
+          <div class="card mb-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-bold">实时流量状态</h3>
+              <div class="flex items-center gap-4">
+                <div class="flex items-center gap-1">
+                  <span class="w-3 h-3 rounded-full bg-primary"></span>
+                  <span class="text-sm">总流量</span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <span class="w-3 h-3 rounded-full bg-success"></span>
+                  <span class="text-sm">白流量</span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <span class="w-3 h-3 rounded-full bg-warning"></span>
+                  <span class="text-sm">可疑流量</span>
+                </div>
+              </div>
+            </div>
+            <div class="h-80">
+              <canvas id="realtime-traffic-chart"></canvas>
+            </div>
+          </div>
+          
+          <!-- 流量列表（空） -->
+          <div class="card">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-bold">流量详情列表</h3>
+              <div class="flex gap-2">
+                <div class="relative">
+                  <input type="text" placeholder="搜索IP或URL..." class="form-input pl-10">
+                  <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-dark-2"></i>
+                </div>
+              </div>
+            </div>
+            <div class="flex flex-col items-center justify-center py-12 text-dark-2">
+              <i class="fa fa-database text-4xl mb-3 opacity-30"></i>
+              <p>暂无流量记录</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 白流量规则页面（空状态） -->
+        <div id="white-rules-page" class="page-content hidden">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold">白流量规则管理</h2>
+            <button id="add-rule-btn" class="btn btn-primary">
+              <i class="fa fa-plus"></i> 新增规则
+            </button>
+          </div>
+          
+          <!-- 规则统计卡片（空） -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div class="card">
+              <div class="flex items-start justify-between">
+                <div>
+                  <p class="text-dark-2 text-sm">总规则数</p>
+                  <h3 class="text-2xl font-bold mt-1">0</h3>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <i class="fa fa-list"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card">
+              <div class="flex items-start justify-between">
+                <div>
+                  <p class="text-dark-2 text-sm">启用中规则</p>
+                  <h3 class="text-2xl font-bold mt-1">0</h3>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center text-success">
+                  <i class="fa fa-check"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card">
+              <div class="flex items-start justify-between">
+                <div>
+                  <p class="text-dark-2 text-sm">已停用规则</p>
+                  <h3 class="text-2xl font-bold mt-1">0</h3>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-dark-2/10 flex items-center justify-center text-dark-2">
+                  <i class="fa fa-pause"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 规则列表（空） -->
+          <div class="card">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-bold">白流量过滤规则</h3>
+              <div class="flex gap-2">
+                <div class="relative">
+                  <input type="text" placeholder="搜索规则..." class="form-input pl-10">
+                  <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-dark-2"></i>
+                </div>
+                <div class="relative">
+                  <select class="form-input pr-8 appearance-none">
+                    <option>全部状态</option>
+                    <option>启用中</option>
+                    <option>已停用</option>
+                  </select>
+                  <i class="fa fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-dark-2 pointer-events-none"></i>
+                </div>
+              </div>
+            </div>
+            <div class="flex flex-col items-center justify-center py-12 text-dark-2">
+              <i class="fa fa-filter text-4xl mb-3 opacity-30"></i>
+              <p>暂无规则，请点击"新增规则"添加</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 告警中心页面（空状态） -->
+        <div id="alerts-page" class="page-content hidden">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold">告警中心</h2>
+            <div class="flex gap-2">
+              <div class="relative">
+                <select class="form-input pr-8 appearance-none">
+                  <option>全部告警类型</option>
+                  <option>白流量误拦</option>
+                  <option>过滤异常</option>
+                  <option>模型更新失败</option>
+                </select>
+                <i class="fa fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-dark-2 pointer-events-none"></i>
+              </div>
+              <div class="relative">
+                <select class="form-input pr-8 appearance-none">
+                  <option>全部状态</option>
+                  <option>未处理</option>
+                  <option>处理中</option>
+                  <option>已解决</option>
+                </select>
+                <i class="fa fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-dark-2 pointer-events-none"></i>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 告警统计（空） -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div class="card">
+              <div class="flex items-start justify-between">
+                <div>
+                  <p class="text-dark-2 text-sm">未处理告警</p>
+                  <h3 class="text-2xl font-bold mt-1">0</h3>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center text-warning">
+                  <i class="fa fa-exclamation-circle"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card">
+              <div class="flex items-start justify-between">
+                <div>
+                  <p class="text-dark-2 text-sm">处理中告警</p>
+                  <h3 class="text-2xl font-bold mt-1">0</h3>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <i class="fa fa-spinner"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card">
+              <div class="flex items-start justify-between">
+                <div>
+                  <p class="text-dark-2 text-sm">已解决告警</p>
+                  <h3 class="text-2xl font-bold mt-1">0</h3>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center text-success">
+                  <i class="fa fa-check-circle"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 告警列表（空） -->
+          <div class="card">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-bold">告警详情</h3>
+              <div class="flex gap-2">
+                <div class="relative">
+                  <input type="text" placeholder="搜索告警..." class="form-input pl-10">
+                  <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-dark-2"></i>
+                </div>
+              </div>
+            </div>
+            <div class="flex flex-col items-center justify-center py-12 text-dark-2">
+              <i class="fa fa-bell-slash text-4xl mb-3 opacity-30"></i>
+              <p>暂无告警记录</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 系统设置页面（完整设置项） -->
+        <div id="settings-page" class="page-content hidden">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold">系统设置</h2>
+            <button id="save-settings" class="btn btn-primary">
+              <i class="fa fa-save"></i> 保存设置
+            </button>
+          </div>
+          
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="card lg:col-span-2">
+              <h3 class="font-bold mb-4">过滤设置</h3>
+              
+              <div class="space-y-6">
+                <div>
+                  <label class="block text-sm font-medium text-dark-2 mb-2">白流量过滤模式</label>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label class="flex items-center p-4 border border-light-2 rounded-lg cursor-pointer hover:border-primary/50">
+                      <input type="radio" name="filter-mode" class="mr-3" checked>
+                      <div>
+                        <p class="font-medium">AI自动识别</p>
+                        <p class="text-sm text-dark-2 mt-1">由AI模型自动识别并过滤白流量</p>
+                      </div>
+                    </label>
+                    <label class="flex items-center p-4 border border-light-2 rounded-lg cursor-pointer hover:border-primary/50">
+                      <input type="radio" name="filter-mode" class="mr-3">
+                      <div>
+                        <p class="font-medium">规则+AI混合</p>
+                        <p class="text-sm text-dark-2 mt-1">结合自定义规则和AI识别结果</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-dark-2 mb-2">过滤精度设置</label>
+                  <input type="range" min="1" max="10" value="5" class="w-full h-2 bg-light-1 rounded-lg appearance-none cursor-pointer accent-primary">
+                  <div class="flex justify-between text-xs text-dark-2 mt-1">
+                    <span>高速度</span>
+                    <span>平衡</span>
+                    <span>高精度</span>
+                  </div>
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-dark-2 mb-2">流量类型过滤</label>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label class="flex items-center">
+                      <input type="checkbox" class="mr-2 accent-primary" checked>
+                      <span>HTTP流量过滤</span>
+                    </label>
+                    <label class="flex items-center">
+                      <input type="checkbox" class="mr-2 accent-primary" checked>
+                      <span>DNS流量过滤</span>
+                    </label>
+                    <label class="flex items-center">
+                      <input type="checkbox" class="mr-2 accent-primary" checked>
+                      <span>视频流过滤</span>
+                    </label>
+                    <label class="flex items-center">
+                      <input type="checkbox" class="mr-2 accent-primary">
+                      <span>其他流量过滤</span>
+                    </label>
+                  </div>
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-dark-2 mb-2">告警通知设置</label>
+                  <div class="space-y-3">
+                    <label class="flex items-center">
+                      <input type="checkbox" class="mr-2 accent-primary" checked>
+                      <span>白流量过滤异常时通知</span>
+                    </label>
+                    <label class="flex items-center">
+                      <input type="checkbox" class="mr-2 accent-primary" checked>
+                      <span>误拦正常流量时通知</span>
+                    </label>
+                    <label class="flex items-center">
+                      <input type="checkbox" class="mr-2 accent-primary" checked>
+                      <span>系统性能下降时通知</span>
+                    </label>
+                    <label class="flex items-center">
+                      <input type="checkbox" class="mr-2 accent-primary">
+                      <span>每日流量统计报告</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h3 class="font-bold mb-4">AI模型设置</h3>
+              
+              <div class="space-y-6">
+                <div>
+                  <label class="block text-sm font-medium text-dark-2 mb-2">当前模型版本</label>
+                  <div class="p-3 bg-light-1 rounded-lg">
+                    <p class="font-medium">V2.3.5 - 稳定版</p>
+                    <p class="text-xs text-dark-2 mt-1">上次更新: 未更新</p>
+                  </div>
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-dark-2 mb-2">模型更新策略</label>
+                  <select class="form-input">
+                    <option>自动更新稳定版</option>
+                    <option>手动更新</option>
+                    <option>自动更新测试版</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-dark-2 mb-2">模型性能设置</label>
+                  <select class="form-input">
+                    <option>平衡模式</option>
+                    <option>高性能模式</option>
+                    <option>节能模式</option>
+                  </select>
+                </div>
+                
+                <button id="check-update" class="btn btn-outline w-full justify-center">
+                  <i class="fa fa-refresh"></i> 检查更新
+                </button>
+                
+                <button class="btn btn-outline w-full justify-center">
+                  <i class="fa fa-history"></i> 模型历史版本
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 个人中心页面 -->
+        <div id="profile-page" class="page-content hidden">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold">个人中心</h2>
+            <button id="save-profile" class="btn btn-primary">
+              <i class="fa fa-save"></i> 保存修改
+            </button>
+          </div>
+          
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="card">
+              <div class="text-center">
+                <div class="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center text-primary text-3xl mx-auto mb-4">
+                  <i class="fa fa-user"></i>
+                </div>
+                <h3 class="font-bold text-lg" id="profile-username">用户</h3>
+                <p class="text-dark-2 text-sm mt-1">系统管理员</p>
+                
+                <button class="mt-4 w-full btn btn-outline">
+                  <i class="fa fa-upload"></i> 更换头像
+                </button>
+              </div>
+              
+              <div class="mt-6 space-y-4">
+                <div class="flex items-start gap-3">
+                  <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                    <i class="fa fa-envelope"></i>
+                  </div>
+                  <div>
+                    <p class="text-sm text-dark-2">邮箱</p>
+                    <p class="font-medium" id="profile-email">未设置</p>
+                  </div>
+                </div>
+                
+                <div class="flex items-start gap-3">
+                  <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                    <i class="fa fa-calendar"></i>
+                  </div>
+                  <div>
+                    <p class="text-sm text-dark-2">注册时间</p>
+                    <p class="font-medium" id="profile-regtime">--</p>
+                  </div>
+                </div>
+                
+                <div class="flex items-start gap-3">
+                  <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                    <i class="fa fa-clock-o"></i>
+                  </div>
+                  <div>
+                    <p class="text-sm text-dark-2">最后登录</p>
+                    <p class="font-medium" id="profile-lastlogin">--</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card lg:col-span-2">
+              <h3 class="font-bold mb-4">个人信息</h3>
+              
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label for="fullname" class="block text-sm font-medium text-dark-2 mb-1">姓名</label>
+                  <input type="text" id="fullname" class="form-input" placeholder="请输入姓名">
+                </div>
+                
+                <div>
+                  <label for="phone" class="block text-sm font-medium text-dark-2 mb-1">手机号码</label>
+                  <input type="text" id="phone" class="form-input" placeholder="请输入手机号码">
+                </div>
+                
+                <div class="md:col-span-2">
+                  <label for="email" class="block text-sm font-medium text-dark-2 mb-1">邮箱地址</label>
+                  <input type="email" id="email" class="form-input" placeholder="请输入邮箱地址">
+                </div>
+              </div>
+              
+              <div class="mt-8">
+                <h3 class="font-bold mb-4">修改密码</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label for="old-password" class="block text-sm font-medium text-dark-2 mb-1">当前密码</label>
+                    <input type="password" id="old-password" class="form-input" placeholder="请输入当前密码">
+                  </div>
+                  
+                  <div>
+                    <label for="new-password" class="block text-sm font-medium text-dark-2 mb-1">新密码</label>
+                    <input type="password" id="new-password" class="form-input" placeholder="请设置新密码">
+                  </div>
+                  
+                  <div class="md:col-span-2">
+                    <label for="confirm-password" class="block text-sm font-medium text-dark-2 mb-1">确认新密码</label>
+                    <input type="password" id="confirm-password" class="form-input" placeholder="请再次输入新密码">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 帮助中心页面 -->
+        <div id="help-page" class="page-content hidden">
+          <div class="mb-6">
+            <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold">帮助中心</h2>
+            <p class="text-dark-2 mt-2">了解如何使用AI流量守卫者的各项功能</p>
+          </div>
+          
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="card lg:col-span-1">
+              <h3 class="font-bold mb-4">帮助目录</h3>
+              
+              <div class="space-y-1">
+                <button class="w-full text-left sidebar-item justify-start active">
+                  <i class="fa fa-question-circle w-5 text-center"></i>
+                  <span>基础介绍</span>
+                </button>
+                <button class="w-full text-left sidebar-item justify-start">
+                  <i class="fa fa-filter w-5 text-center"></i>
+                  <span>白流量过滤</span>
+                </button>
+                <button class="w-full text-left sidebar-item justify-start">
+                  <i class="fa fa-cog w-5 text-center"></i>
+                  <span>系统设置</span>
+                </button>
+                <button class="w-full text-left sidebar-item justify-start">
+                  <i class="fa fa-line-chart w-5 text-center"></i>
+                  <span>数据分析</span>
+                </button>
+                <button class="w-full text-left sidebar-item justify-start">
+                  <i class="fa fa-bell w-5 text-center"></i>
+                  <span>告警处理</span>
+                </button>
+                <button class="w-full text-left sidebar-item justify-start">
+                  <i class="fa fa-exclamation-triangle w-5 text-center"></i>
+                  <span>常见问题</span>
+                </button>
+              </div>
+            </div>
+            
+            <div class="card lg:col-span-2">
+              <h3 class="font-bold mb-4">AI流量守卫者基础介绍</h3>
+              
+              <div class="prose max-w-none">
+                <p class="text-dark-2 mb-4">
+                  AI流量守卫者是一款基于人工智能技术的流量安全管理平台，能够自动识别并过滤正常流量（白流量），
+                  让您专注于真正的威胁检测工作。平台采用先进的机器学习算法，能够不断优化识别精度，降低误判率。
+                </p>
+                
+                <h4 class="font-bold text-lg mt-6 mb-3">核心功能</h4>
+                
+                <ul class="list-disc pl-5 space-y-2 text-dark-2 mb-6">
+                  <li><strong>智能流量识别</strong> - 基于AI模型自动识别正常流量与异常流量</li>
+                  <li><strong>自定义规则管理</strong> - 支持创建、编辑和管理白流量规则</li>
+                  <li><strong>实时流量监控</strong> - 实时展示系统流量状态与数据分析</li>
+                  <li><strong>智能告警系统</strong> - 异常情况及时提醒，确保问题快速处理</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 新增/编辑规则模态框 -->
+  <div id="rule-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="absolute inset-0 bg-dark/50 backdrop-blur-sm" id="modal-backdrop"></div>
+    <div class="relative w-full max-w-lg bg-white rounded-2xl shadow-lg overflow-hidden z-10 transform transition-all duration-300 scale-95 opacity-0" id="modal-content">
+      <div class="p-6 border-b border-light-2">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-bold" id="modal-title">新增白流量规则</h3>
+          <button id="close-modal" class="p-1 rounded-full hover:bg-light-1">
+            <i class="fa fa-times text-dark-2"></i>
+          </button>
+        </div>
+      </div>
+      
+      <div class="p-6">
+        <form id="rule-form">
+          <div class="mb-4">
+            <label for="rule-name" class="block text-sm font-medium text-dark-2 mb-1">规则名称</label>
+            <input type="text" id="rule-name" class="form-input" placeholder="请输入规则名称" required>
+          </div>
+          
+          <div class="mb-4">
+            <label for="rule-type" class="block text-sm font-medium text-dark-2 mb-1">流量类型</label>
+            <select id="rule-type" class="form-input" required>
+              <option value="http">HTTP流量</option>
+              <option value="dns">DNS流量</option>
+              <option value="video">视频流</option>
+              <option value="other">其他</option>
+            </select>
+          </div>
+          
+          <div class="mb-4">
+            <label for="rule-condition" class="block text-sm font-medium text-dark-2 mb-1">匹配条件</label>
+            <div class="flex gap-2 mb-2">
+              <button type="button" class="px-3 py-1 text-sm rounded-md bg-primary/10 text-primary condition-btn" data-type="ip">IP地址</button>
+              <button type="button" class="px-3 py-1 text-sm rounded-md hover:bg-light-1 condition-btn" data-type="domain">域名</button>
+              <button type="button" class="px-3 py-1 text-sm rounded-md hover:bg-light-1 condition-btn" data-type="port">端口</button>
+              <button type="button" class="px-3 py-1 text-sm rounded-md hover:bg-light-1 condition-btn" data-type="protocol">协议</button>
+            </div>
+            <input type="text" id="rule-condition" class="form-input" placeholder="例如: 192.168.1.0/24" required>
+            <p class="text-xs text-dark-2 mt-1">支持IP段（192.168.1.0/24）、域名通配符（*.example.com）等格式</p>
+          </div>
+          
+          <div class="mb-6">
+            <label class="flex items-center">
+              <input type="checkbox" class="mr-2 accent-primary" checked id="rule-enable">
+              <span>启用此规则</span>
+            </label>
+          </div>
+          
+          <div class="flex gap-2">
+            <button type="button" id="cancel-rule" class="flex-1 btn btn-outline">取消</button>
+            <button type="submit" class="flex-1 btn btn-primary">保存规则</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript 交互逻辑 -->
+  <script>
+    // 页面加载完成后执行
+    document.addEventListener('DOMContentLoaded', function() {
+      // 初始化用户存储
+      if (!localStorage.getItem('users')) {
+        localStorage.setItem('users', JSON.stringify([]));
+      }
+
+      // 登录相关元素
+      const loginPage = document.getElementById('login-page');
+      const registerPage = document.getElementById('register-page');
+      const app = document.getElementById('app');
+      const loginForm = document.getElementById('login-form');
+      const registerForm = document.getElementById('register-form');
+      const showRegisterBtn = document.getElementById('show-register');
+      const showLoginBtn = document.getElementById('show-login');
+      const logoutBtn = document.getElementById('logout-btn');
+      const currentUserEl = document.getElementById('current-user');
+      const profileUsernameEl = document.getElementById('profile-username');
+      const passwordInput = document.getElementById('reg-password');
+      const confirmInput = document.getElementById('reg-confirm');
+      const passwordError = document.getElementById('password-error');
+      const loginError = document.getElementById('login-error');
+      const userExistError = document.getElementById('user-exist-error');
+      const passwordLengthError = document.getElementById('password-length-error');
+      const toast = document.getElementById('toast');
+      const toastMessage = document.getElementById('toast-message');
+      
+      // 系统设置相关
+      const saveSettingsBtn = document.getElementById('save-settings');
+      const checkUpdateBtn = document.getElementById('check-update');
+      const saveProfileBtn = document.getElementById('save-profile');
+      
+      // 侧边栏相关元素
+      const sidebarToggle = document.getElementById('sidebar-toggle');
+      const sidebar = document.getElementById('sidebar');
+      const sidebarItems = document.querySelectorAll('.sidebar-item');
+      const pageContents = document.querySelectorAll('.page-content');
+      
+      // 规则模态框相关元素
+      const ruleModal = document.getElementById('rule-modal');
+      const modalContent = document.getElementById('modal-content');
+      const addRuleBtn = document.getElementById('add-rule-btn');
+      const closeModalBtn = document.getElementById('close-modal');
+      const cancelRuleBtn = document.getElementById('cancel-rule');
+      const modalBackdrop = document.getElementById('modal-backdrop');
+      const ruleForm = document.getElementById('rule-form');
+      const conditionBtns = document.querySelectorAll('.condition-btn');
+      
+      // 显示提示消息
+      function showToast(message, isError = false) {
+        toastMessage.textContent = message;
+        if (isError) {
+          toast.classList.remove('bg-success');
+          toast.classList.add('bg-danger');
+        } else {
+          toast.classList.remove('bg-danger');
+          toast.classList.add('bg-success');
+        }
+        toast.classList.add('show');
+        setTimeout(() => {
+          toast.classList.remove('show');
+        }, 3000);
+      }
+      
+      // 登录/注册页面切换
+      function showRegister() {
+        loginPage.classList.add('hidden');
+        registerPage.classList.remove('hidden');
+        // 重置错误提示
+        loginError.classList.add('hidden');
+        userExistError.classList.add('hidden');
+        passwordError.classList.add('hidden');
+        passwordLengthError.classList.add('hidden');
+      }
+      
+      function showLogin() {
+        registerPage.classList.add('hidden');
+        loginPage.classList.remove('hidden');
+        // 重置表单
+        registerForm.reset();
+      }
+      
+      // 注册表单提交处理
+      registerForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const username = document.getElementById('reg-username').value.trim();
+        const password = document.getElementById('reg-password').value;
+        const confirm = document.getElementById('reg-confirm').value;
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        
+        // 验证逻辑
+        let isValid = true;
+        
+        // 检查用户名是否存在
+        if (users.some(user => user.username === username)) {
+          userExistError.classList.remove('hidden');
+          isValid = false;
+        } else {
+          userExistError.classList.add('hidden');
+        }
+        
+        // 检查密码长度
+        if (password.length < 6) {
+          passwordLengthError.classList.remove('hidden');
+          isValid = false;
+        } else {
+          passwordLengthError.classList.add('hidden');
+        }
+        
+        // 检查密码一致性
+        if (password !== confirm) {
+          passwordError.classList.remove('hidden');
+          isValid = false;
+        } else {
+          passwordError.classList.add('hidden');
+        }
+        
+        if (!isValid) return;
+        
+        // 保存用户信息
+        const regTime = new Date().toLocaleString();
+        users.push({
+          username,
+          password,
+          regTime,
+          lastLogin: ''
+        });
+        localStorage.setItem('users', JSON.stringify(users));
+        
+        // 显示成功提示
+        showToast('注册成功，请登录！');
+        // 2秒后切换到登录页
+        setTimeout(() => {
+          showLogin();
+          // 填充用户名
+          document.getElementById('username').value = username;
+        }, 1500);
+      });
+      
+      // 登录表单提交处理
+      loginForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        
+        // 查找用户
+        const user = users.find(u => u.username === username && u.password === password);
+        
+        if (user) {
+          loginError.classList.add('hidden');
+          // 更新最后登录时间
+          user.lastLogin = new Date().toLocaleString();
+          localStorage.setItem('users', JSON.stringify(users));
+          
+          // 保存当前用户
+          localStorage.setItem('currentUser', username);
+          currentUserEl.textContent = username;
+          profileUsernameEl.textContent = username;
+          
+          // 更新个人中心信息
+          document.getElementById('profile-regtime').textContent = user.regTime;
+          document.getElementById('profile-lastlogin').textContent = user.lastLogin;
+          
+          // 切换到主应用界面
+          loginPage.classList.add('hidden');
+          app.classList.remove('hidden');
+          // 初始化图表
+          initCharts();
+          showToast(`欢迎回来，${username}！`);
+        } else {
+          loginError.classList.remove('hidden');
+        }
+      });
+      
+      // 退出登录处理
+      logoutBtn.addEventListener('click', function() {
+        app.classList.add('hidden');
+        loginPage.classList.remove('hidden');
+        // 清空表单
+        loginForm.reset();
+        // 清除当前用户标记
+        localStorage.removeItem('currentUser');
+      });
+      
+      // 侧边栏切换
+      sidebarToggle.addEventListener('click', function() {
+        sidebar.classList.toggle('-translate-x-full');
+      });
+      
+      // 页面切换逻辑
+      sidebarItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+          e.preventDefault();
+          
+          // 更新激活状态
+          sidebarItems.forEach(i => i.classList.remove('active'));
+          this.classList.add('active');
+          
+          // 隐藏所有页面
+          pageContents.forEach(page => page.classList.add('hidden'));
+          
+          // 显示对应页面
+          const pageId = this.getAttribute('data-page') + '-page';
+          document.getElementById(pageId).classList.remove('hidden');
+          
+          // 在移动设备上点击后收起侧边栏
+          if (window.innerWidth < 1024) {
+            sidebar.classList.add('-translate-x-full');
+          }
+        });
+      });
+      
+      // 规则模态框控制
+      function openRuleModal(isEdit = false, id = null) {
+        ruleModal.classList.remove('hidden');
+        setTimeout(() => {
+          modalContent.classList.remove('scale-95', 'opacity-0');
+          modalContent.classList.add('scale-100', 'opacity-100');
+        }, 50);
+        
+        if (isEdit && id) {
+          document.getElementById('modal-title').textContent = `编辑规则 #${id}`;
+          // 编辑模式可在此加载数据
+        } else {
+          document.getElementById('modal-title').textContent = '新增白流量规则';
+          ruleForm.reset();
+          // 重置条件按钮状态
+          conditionBtns.forEach(btn => {
+            btn.classList.remove('bg-primary/10', 'text-primary');
+            btn.classList.add('hover:bg-light-1');
+          });
+          conditionBtns[0].classList.add('bg-primary/10', 'text-primary');
+          conditionBtns[0].classList.remove('hover:bg-light-1');
+          document.getElementById('rule-condition').placeholder = '例如: 192.168.1.0/24';
+        }
+      }
+      
+      function closeRuleModal() {
+        modalContent.classList.remove('scale-100', 'opacity-100');
+        modalContent.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => {
+          ruleModal.classList.add('hidden');
+        }, 200);
+      }
+      
+      // 条件按钮切换
+      conditionBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+          // 更新按钮状态
+          conditionBtns.forEach(b => {
+            b.classList.remove('bg-primary/10', 'text-primary');
+            b.classList.add('hover:bg-light-1');
+          });
+          this.classList.add('bg-primary/10', 'text-primary');
+          this.classList.remove('hover:bg-light-1');
+          
+          // 更新输入框提示
+          const type = this.getAttribute('data-type');
+          const input = document.getElementById('rule-condition');
+          switch(type) {
+            case 'ip':
+              input.placeholder = '例如: 192.168.1.0/24 或 10.0.0.1';
+              break;
+            case 'domain':
+              input.placeholder = '例如: *.example.com 或 api.example.com';
+              break;
+            case 'port':
+              input.placeholder = '例如: 80 或 443-8080';
+              break;
+            case 'protocol':
+              input.placeholder = '例如: TCP 或 UDP';
+              break;
+          }
+        });
+      });
+      
+      // 规则表单提交
+      ruleForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        // 这里可以添加规则保存逻辑
+        closeRuleModal();
+        showToast('规则保存成功');
+        // 实际应用中应刷新规则列表
+      });
+      
+      // 模态框事件绑定
+      addRuleBtn.addEventListener('click', () => openRuleModal());
+      closeModalBtn.addEventListener('click', closeRuleModal);
+      cancelRuleBtn.addEventListener('click', closeRuleModal);
+      modalBackdrop.addEventListener('click', closeRuleModal);
+      
+      // 页面切换事件绑定
+      showRegisterBtn.addEventListener('click', showRegister);
+      showLoginBtn.addEventListener('click', showLogin);
+      
+      // 系统设置保存
+      saveSettingsBtn.addEventListener('click', function() {
+        showToast('系统设置保存成功');
+      });
+      
+      // 检查更新
+      checkUpdateBtn.addEventListener('click', function() {
+        showToast('正在检查更新...');
+        setTimeout(() => {
+          showToast('当前已是最新版本');
+        }, 1500);
+      });
+      
+      // 保存个人信息
+      saveProfileBtn.addEventListener('click', function() {
+        showToast('个人信息保存成功');
+      });
+      
+      // 初始化空图表
+      function initCharts() {
+        // 流量趋势图表（空）
+        const trafficTrendCtx = document.getElementById('traffic-trend-chart');
+        if (trafficTrendCtx) {
+          new Chart(trafficTrendCtx, {
+            type: 'line',
+            data: {
+              labels: Array.from({length: 8}, (_, i) => `${i*3}:00`),
+              datasets: [
+                {
+                  label: '总流量',
+                  data: Array(8).fill(0),
+                  borderColor: '#165DFF',
+                  backgroundColor: 'rgba(22, 93, 255, 0.1)',
+                  tension: 0.4,
+                  fill: true
+                },
+                {
+                  label: '白流量',
+                  data: Array(8).fill(0),
+                  borderColor: '#00B42A',
+                  backgroundColor: 'rgba(0, 180, 42, 0.1)',
+                  tension: 0.4,
+                  fill: true
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  position: 'top',
+                }
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  title: {
+                    display: true,
+                    text: '流量 (GB)'
+                  }
+                }
+              }
+            }
+          });
+        }
+        
+        // 流量类型图表（空）
+        const trafficTypeCtx = document.getElementById('traffic-type-chart');
+        if (trafficTypeCtx) {
+          new Chart(trafficTypeCtx, {
+            type: 'doughnut',
+            data: {
+              labels: ['HTTP', '视频流', 'DNS', '其他'],
+              datasets: [{
+                data: [0, 0, 0, 0],
+                backgroundColor: [
+                  '#165DFF',
+                  '#0FC6C2',
+                  '#00B42A',
+                  '#4E5969'
+                ],
+                borderWidth: 0
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  position: 'bottom'
+                }
+              },
+              cutout: '70%'
+            }
+          });
+        }
+        
+        // 实时流量图表（空）
+        const realtimeTrafficCtx = document.getElementById('realtime-traffic-chart');
+        if (realtimeTrafficCtx) {
+          new Chart(realtimeTrafficCtx, {
+            type: 'line',
+            data: {
+              labels: Array.from({length: 20}, (_, i) => `${i*3}分钟前`),
+              datasets: [
+                {
+                  label: '总流量',
+                  data: Array(20).fill(0),
+                  borderColor: '#165DFF',
+                  borderWidth: 2,
+                  pointRadius: 0,
+                  tension: 0.4,
+                  fill: false
+                },
+                {
+                  label: '白流量',
+                  data: Array(20).fill(0),
+                  borderColor: '#00B42A',
+                  borderWidth: 2,
+                  pointRadius: 0,
+                  tension: 0.4,
+                  fill: false
+                },
+                {
+                  label: '可疑流量',
+                  data: Array(20).fill(0),
+                  borderColor: '#FF7D00',
+                  borderWidth: 2,
+                  pointRadius: 0,
+                  tension: 0.4,
+                  fill: false
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  display: false
+                }
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  title: {
+                    display: true,
+                    text: '流量 (MB/min)'
+                  }
+                }
+              }
+            }
+          });
+        }
+      }
+      
+      // 检查是否有保存的用户会话
+      const savedUser = localStorage.getItem('currentUser');
+      if (savedUser) {
+        // 加载用户信息
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        const user = users.find(u => u.username === savedUser);
+        if (user) {
+          currentUserEl.textContent = savedUser;
+          profileUsernameEl.textContent = savedUser;
+          document.getElementById('profile-regtime').textContent = user.regTime;
+          document.getElementById('profile-lastlogin').textContent = user.lastLogin;
+          
+          // 直接进入应用
+          loginPage.classList.add('hidden');
+          app.classList.remove('hidden');
+          initCharts();
+        }
+      }
+    });
+const fileDropFilterPage = document.getElementById('file-drop-filter-page');
+const fileDropArea = document.getElementById('file-drop-area');
+const fileInput = document.getElementById('file-input');
+const fileList = document.getElementById('file-list');
+const emptyFileState = document.getElementById('empty-file-state');
+const fileCount = document.getElementById('file-count');
+const clearFilesBtn = document.getElementById('clear-files-btn');
+const applyFileFilterBtn = document.getElementById('apply-file-filter-btn');
+
+// 存储已选择的文件
+let selectedFiles = [];
+
+// 初始化拖放区域事件
+function initFileDropArea() {
+  // 拖入事件
+  fileDropArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    fileDropArea.classList.add('border-primary', 'bg-primary/5');
+  });
+  
+  // 拖出事件
+  fileDropArea.addEventListener('dragleave', () => {
+    fileDropArea.classList.remove('border-primary', 'bg-primary/5');
+  });
+  
+  // 放下事件
+  fileDropArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    fileDropArea.classList.remove('border-primary', 'bg-primary/5');
+    
+    if (e.dataTransfer.files.length) {
+      handleFiles(e.dataTransfer.files);
+    }
+  });
+  
+  // 文件选择事件
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) {
+      handleFiles(fileInput.files);
+    }
+  });
+  
+  // 清空文件按钮
+  clearFilesBtn.addEventListener('click', clearAllFiles);
+  
+  // 应用过滤按钮
+  applyFileFilterBtn.addEventListener('click', applyFileFilter);
+}
+
+// 处理选择的文件
+function handleFiles(files) {
+  // 转换为数组以便操作
+  const fileArray = Array.from(files);
+  
+  // 过滤重复文件
+  const newFiles = fileArray.filter(file => 
+    !selectedFiles.some(f => f.name === file.name && f.size === file.size)
+  );
+  
+  if (newFiles.length > 0) {
+    // 添加新文件
+    selectedFiles = [...selectedFiles, ...newFiles];
+    
+    // 更新UI
+    updateFileList();
+    showToast(`已添加 ${newFiles.length} 个文件`);
+  } else {
+    showToast('未添加新文件，可能是重复文件', 'error');
+  }
+  
+  // 重置input值，允许重复选择同一文件
+  fileInput.value = '';
+}
+
+// 更新文件列表UI
+function updateFileList() {
+  // 更新文件计数
+  fileCount.textContent = `${selectedFiles.length} 个文件`;
+  
+  // 显示/隐藏空状态
+  if (selectedFiles.length === 0) {
+    emptyFileState.classList.remove('hidden');
+    return;
+  } else {
+    emptyFileState.classList.add('hidden');
+  }
+  
+  // 清空当前列表
+  fileList.innerHTML = '';
+  
+  // 添加空状态元素（会被隐藏但需要存在）
+  fileList.appendChild(emptyFileState);
+  
+  // 添加文件项
+  selectedFiles.forEach((file, index) => {
+    const fileItem = document.createElement('div');
+    fileItem.className = 'py-3 flex items-center justify-between group';
+    
+    // 确定文件图标
+    let fileIcon = 'fa-file-o';
+    if (file.type.startsWith('image/')) fileIcon = 'fa-file-image-o';
+    else if (file.type.startsWith('video/')) fileIcon = 'fa-file-video-o';
+    else if (file.type.startsWith('audio/')) fileIcon = 'fa-file-audio-o';
+    else if (file.type.includes('pdf')) fileIcon = 'fa-file-pdf-o';
+    else if (file.type.includes('word')) fileIcon = 'fa-file-word-o';
+    else if (file.type.includes('excel')) fileIcon = 'fa-file-excel-o';
+    else if (file.type.includes('zip') || file.type.includes('rar')) fileIcon = 'fa-file-archive-o';
+    
+    // 文件大小格式化
+    const fileSize = formatFileSize(file.size);
+    
+    fileItem.innerHTML = `
+      <div class="flex items-center">
+        <i class="fa ${fileIcon} text-primary mr-3"></i>
+        <div>
+          <p class="font-medium truncate max-w-md">${file.name}</p>
+          <p class="text-sm text-dark-2">${fileSize} · ${file.type || '未知类型'}</p>
+        </div>
+      </div>
+      <button class="text-dark-2 hover:text-danger transition-colors opacity-0 group-hover:opacity-100" data-index="${index}">
+        <i class="fa fa-times"></i>
+      </button>
+    `;
+    
+    fileList.appendChild(fileItem);
+  });
+  
+  // 添加删除单个文件事件
+  document.querySelectorAll('#file-list button').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const index = parseInt(e.currentTarget.getAttribute('data-index'));
+      removeFile(index);
+    });
+  });
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// 移除单个文件
+function removeFile(index) {
+  const removedFile = selectedFiles.splice(index, 1)[0];
+  updateFileList();
+  showToast(`已移除 ${removedFile.name}`);
+}
+
+// 清空所有文件
+function clearAllFiles() {
+  if (selectedFiles.length === 0) {
+    showToast('没有可清空的文件', 'error');
+    return;
+  }
+  
+  if (confirm('确定要清空所有已选择的文件吗？')) {
+    selectedFiles = [];
+    updateFileList();
+    showToast('已清空所有文件');
+  }
+}
+
+// 应用文件过滤
+function applyFileFilter() {
+  if (selectedFiles.length === 0) {
+    showToast('请先添加文件再应用过滤', 'error');
+    return;
+  }
+  
+  // 模拟过滤操作
+  showToast('正在应用文件过滤...');
+  
+  setTimeout(() => {
+    // 这里可以添加实际的过滤逻辑
+    showToast(`已成功应用 ${selectedFiles.length} 个文件的过滤规则`);
+  }, 1500);
+}
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', () => {
+  initFileDropArea();
+});
+  </script>
+</body>
+</html>
